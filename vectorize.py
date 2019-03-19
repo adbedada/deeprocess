@@ -54,4 +54,51 @@ def vectorize_skeleton(img, stride, tolerance, preserve_topology=True, remove_ha
         
 
     return shape
+    
+    
+    
+    def get_geotransform(img):
+    
+    src = rasterio.open(img)
+    name = src.name.split('/')[1].split('.')[0]
+    y = int(name.split('-')[0])
+    x = int(name.split('-')[1])
+    xsize=int(rwarr.shape[0])
+    ysize=int(rwarr.shape[1])
+    
+    transform = from_origin(x,y,xsize,ysize)
+    
+    return transform
+    
+    
+    def convert_poly_coords(geom, affine_obj):
+    affine_xform = affine_obj
+    g = geom
+    
+    xformed_g = shapely.affinity.affine_transform(g, [affine_xform.a,
+                                                  affine_xform.b,
+                                                  affine_xform.d,
+                                                  affine_xform.e,
+                                                  affine_xform.xoff,
+                                                  affine_xform.yoff])
+    return xformed_g
+
+    
+    crs = rasterio.crs.CRS({"init": "epsg:4326"})
+    
+    def export_to_shp(geom):
+        shp_schema = {'geometry': 'MultiLineString','properties': {'id': 'int'}}
+        # save 
+        with fiona.open('output.shp', 
+                        'w', 
+                        'ESRI Shapefile', crs=crs, 
+                        schema=shp_schema)  as output:
+             output.write({'geometry':mapping(geom),'properties': {'id':1}})
+     
+    def export_to_json(geom):
+        with fiona.open('output.geojson', 
+                    'w', 
+                    'GeoJSON', crs=crs, 
+                    schema=shp_schema)  as output:
+         output.write({'geometry':mapping(geom),'properties': {'id':1}})
 
