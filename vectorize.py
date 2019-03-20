@@ -70,7 +70,27 @@ def vectorize_skeleton(img, stride, tolerance, preserve_topology=True, remove_ha
     
     return transform
     
+def skeltonize_image(img):
     
+    src = rasterio.open(img)
+    arr = src.read(1)
+    
+    # set 5 by 5 convolve 
+    ball_5 = np.ones((5,5), dtype=int)
+    ball_5[0,[0,-1]] = 0
+    ball_5[-1,[0,-1]] = 0
+    
+    # close gaps at segments
+    binary_closure = ndimage.binary_closing \
+                (np.pad(arr, 9, mode='reflect'),
+                 ball_5)[9:-9,9:-9]
+    
+    # skeletonize
+    skltn = skeletonize(binary_closure)
+    
+    return skltn
+
+
     def convert_poly_coords(geom, affine_obj):
     affine_xform = affine_obj
     g = geom
