@@ -106,19 +106,46 @@ def skeltonize_image(img):
     
     crs = rasterio.crs.CRS({"init": "epsg:4326"})
     
-    def export_to_shp(geom):
-        shp_schema = {'geometry': 'MultiLineString','properties': {'id': 'int'}}
-        # save 
-        with fiona.open('output.shp', 
-                        'w', 
-                        'ESRI Shapefile', crs=crs, 
-                        schema=shp_schema)  as output:
-             output.write({'geometry':mapping(geom),'properties': {'id':1}})
-     
-    def export_to_json(geom):
-        with fiona.open('output.geojson', 
+    
+    def set_transform(geom):
+    
+    shp_crs = from_string("+datum=WGS84 \
+                           +ellps=WGS84 \
+                           +no_defs \
+                           +proj=longlat")
+ 
+    affine_xform = src.transform
+    
+    xformed_g = affine_transform(geom, 
+                                 [affine_xform.a,
+                                  affine_xform.b,
+                                  affine_xform.d,
+                                  affine_xform.e,
+                                  affine_xform.xoff,
+                                  affine_xform.yoff])
+    return xformed_g
+    
+    
+def export_to_shp(geom, opt_file_name):
+    mp = set_transform(geom)
+    
+    shp_schema = {'geometry': 'MultiLineString','properties': {'id': 'int'}}
+    # save 
+    with fiona.open(opt_file_name+'.shp', 
                     'w', 
-                    'GeoJSON', crs=crs, 
+                    'ESRI Shapefile', crs=shp_crs, 
                     schema=shp_schema)  as output:
-         output.write({'geometry':mapping(geom),'properties': {'id':1}})
+         output.write({'geometry':mapping(mp),'properties': {'id':1}})
+
+            
+def export_to_geojson(geom, opt_file_name):
+    mp = set_transform(geom)
+    
+    with fiona.open(opt_file_name+'.geojson', 
+                'w', 
+                'GeoJSON', crs=shp_crs, 
+                schema=shp_schema)  as output:
+         output.write({'geometry':mapping(corr_mp),'properties': {'id':1}})
+    
+
 
