@@ -1,4 +1,5 @@
-#https://github.com/SpaceNetChallenge/RoadDetector/blob/master/pfr-solution/code/rd.py
+
+
 import fiona
 import shapely
 import rasterio
@@ -12,7 +13,6 @@ from shapely.geometry import MultiLineString
 from shapely.geometry import mapping
 from shapely.affinity import affine_transform
 from shapely.geometry import asMultiLineString
-from affine import Affine
 
 
 def vectorize(img, stride=1, tolerance=1, preserve_topology=True, remove_hair=0):
@@ -141,8 +141,9 @@ def convert_poly_coords(geom, affine_obj):
                                      affine_xform.yoff])
     return xformed_geom
 
-# default coordiante system
-  crs = rasterio.crs.CRS({"init": "epsg:4326"})
+
+# default coordinate system
+crs = rasterio.crs.CRS({"init": "epsg:4326"})
 
 
 def assign_transform(img, geom):
@@ -190,7 +191,7 @@ def export_to_shp(geom, opt_file_name):
                     'w', 
                     'ESRI Shapefile', crs=shp_crs, 
                     schema=shp_schema)  as output:
-         output.write({'geometry':mapping(mp),'properties': {'id':1}})
+            output.write({'geometry':mapping(mp),'properties': {'id':1}})
 
             
 def export_to_geojson(geom, opt_file_name):
@@ -203,10 +204,10 @@ def export_to_geojson(geom, opt_file_name):
     mp = assign_transform(geom)
     
     with fiona.open(opt_file_name+'.geojson', 
-                'w', 
-                'GeoJSON', crs=shp_crs, 
-                schema=shp_schema)  as output:
-         output.write({'geometry':mapping(mp),'properties': {'id':1}})
+                    'w',
+                    'GeoJSON', crs=shp_crs,
+                    schema=shp_schema)  as output:
+            output.write({'geometry':mapping(mp),'properties': {'id':1}})
     
 
 
