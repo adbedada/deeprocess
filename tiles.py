@@ -46,10 +46,8 @@ def open_tile(filename, outdir, OverLapImageWidth):
 
         newOrigin_dx = int(256 - ((OverLapImageWidth - 256)/2))
         newOrigin_dy = int(256 + ((OverLapImageWidth - 256)/2))
-        newOrigin_MapCoords = transform.xy(aff,
-                                           rows=newOrigin_dy,
-                                           cols=newOrigin_dx,
-                                           offset='ul')
+
+        newOrigin_MapCoords = transform.xy(aff,rows=newOrigin_dy,cols=newOrigin_dx,offset='ul')
 
         new_aff = transform.from_origin(newOrigin_MapCoords[0],
                                         newOrigin_MapCoords[1],
@@ -71,7 +69,7 @@ def open_tile(filename, outdir, OverLapImageWidth):
             dst.write(mask.astype(rasterio.uint8))
 
 
-def build_vrt(input_folder, out_vrt_filename='mosaic.vrt', input_image_extension=".tif"):
+def build_vrt(input_folder, out_vrt_filename='1_mosaic.vrt', input_image_extension=".tif"):
 
     '''
 
@@ -105,10 +103,8 @@ def main(input_folder, output_folder, input_image_extension, build_vrt_bool = Fa
         print("Georeferencing: ", i)
 
     if build_vrt_bool is True:
-        build_vrt(input_folder = input_folder)
+        build_vrt(input_folder = output_folder)
 
     if type(build_vrt_bool) != bool :
         raise Exception("build_vrt_bool parameter only accepts booleans")
-
-
 

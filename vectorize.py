@@ -98,14 +98,24 @@ def image_metadata(img):
 
     return name, x, y, z,width,height
 
+
 # prep image for vectorization
+
+def get_array(img):
+
+    if isinstance(img, np.ndarray) is not True:
+        arr = img.read(1)
+    else:
+        arr = img
+
+    return arr
+
+
 def skeltonize_image(img):
-    
-    src = rasterio.open(img)
-    arr = src.read(1)
-    
+
+    arr = get_array(img)
     # set 5 by 5 convolve 
-    ball_5 = np.ones((5,5), dtype=int)
+    ball_5 = np.ones((15,15), dtype=int)
     ball_5[0,[0,-1]] = 0
     ball_5[-1,[0,-1]] = 0
     
@@ -143,7 +153,7 @@ def convert_poly_coords(geom, affine_obj):
 
 
 # default coordinate system
-crs = rasterio.crs.CRS({"init": "epsg:4326"})
+crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
 
 def assign_transform(img, geom):
@@ -158,12 +168,12 @@ def assign_transform(img, geom):
     affine_xform = src.transform
     
     xformed_geom = affine_transform(geom,
-                                 [affine_xform.a,
-                                  affine_xform.b,
-                                  affine_xform.d,
-                                  affine_xform.e,
-                                  affine_xform.xoff,
-                                  affine_xform.yoff])
+                                    [affine_xform.a,
+                                     affine_xform.b,
+                                     affine_xform.d,
+                                     affine_xform.e,
+                                     affine_xform.xoff,
+                                     affine_xform.yoff])
     return xformed_geom
 
 
@@ -185,13 +195,13 @@ def export_to_shp(geom, opt_file_name):
     :return: shapefile output
     '''
 
-    mp = assign_transform(geom)
+
     # save
     with fiona.open(opt_file_name+'.shp', 
                     'w', 
-                    'ESRI Shapefile', crs=shp_crs, 
+                    'ESRI Shapefile', crs=crs,
                     schema=shp_schema)  as output:
-            output.write({'geometry':mapping(mp),'properties': {'id':1}})
+            output.write({'geometry':mapping(geom),'properties': {'id':1}})
 
             
 def export_to_geojson(geom, opt_file_name):
@@ -201,13 +211,26 @@ def export_to_geojson(geom, opt_file_name):
     :param opt_file_name: geojson output file name
     :return: geojson
     '''
-    mp = assign_transform(geom)
+    mp, aff_tr = convert_poly_coords(geom)
     
     with fiona.open(opt_file_name+'.geojson', 
                     'w',
-                    'GeoJSON', crs=shp_crs,
+                    'GeoJSON', crs=crs,
                     schema=shp_schema)  as output:
-            output.write({'geometry':mapping(mp),'properties': {'id':1}})
-    
+            output.write(   {'geometry':mapping(mp),'properties': {'id':1}})
 
 
+def main(input_vrt, output_file_name):
+
+    src = rasterio.open(input_vrt)
+    arr = get_array(src)
+    skeleton = skeltonize_image(arr)
+    vector = vectorize(skeleton)
+    geo_transform = src.transform
+    polygon = convert_poly_coords(vector, geo_transform)
+    export_to_shp(polygon,output_file_name)
+
+    print('Task is completed')
+
+main('/Users/eddiebedada/tests/vectorize/ff_vrt/mosaic.vrt',
+     '/Users/eddiebedada/tests/vectorize/ff_vrt/6_mosaic')
