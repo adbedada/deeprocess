@@ -15,19 +15,20 @@ from shapely.affinity import affine_transform
 from shapely.geometry import asMultiLineString
 
 
-def vectorize(img, stride=1, tolerance=1, preserve_topology=True, remove_hair=0):
-    '''
-     converts image to stringline shapely geometry
+def vector(img, stride=1, tolerance=1, preserve_topology=True, remove_hair=0):
+    """
+     Converts image to StringLine shapely geometry
 
     :param img: input image to skeletonize
     :param stride: window stride defaulted to 1
     :param tolerance: line simplification tolerance
     :param preserve_topology: maintain the shape of the input
-    :param remove_hair: removes deadends created by skeletonization
+    :param remove_hair: removes dead ends created by skeletonization
     :return: multi-string shapely geometry
-    '''
+    """
 
-    'src-code: https://github.com/SpaceNetChallenge/RoadDetector/blob/master/pfr-solution/code/rd.py'
+    'vectorization-source-code:@pfr'
+    'https://github.com/SpaceNetChallenge/RoadDetector/blob/master/pfr-solution/code/rd.py'
 
     # grab all non-zero values
     i,j = np.nonzero(img)
@@ -63,7 +64,7 @@ def vectorize(img, stride=1, tolerance=1, preserve_topology=True, remove_hair=0)
     lines = np.array([xy[u], xy[v]]).swapaxes(0,1)
     shape = linemerge(lines).simplify(tolerance, preserve_topology=preserve_topology)
 
-    # Remove any short deadends created by skeletonization.
+    # Remove any short dead ends created by skeletonization.
     if remove_hair:
         strings = list(asMultiLineString(shape))
         arity = {}
@@ -83,35 +84,45 @@ def vectorize(img, stride=1, tolerance=1, preserve_topology=True, remove_hair=0)
     
 
 def image_metadata(img):
-    '''
+
+    """
+    extracts items to be used as metadata
+
     :param img: input data
     :return: name, x, y, z, width and height
-    '''
+
+    """
     src = rasterio.open(img)
     arr = src.read(1)
     name = src.name.split('.')[0]
     y = int(name.split('-')[0])
     x = int(name.split('-')[1])
     z = int(name.split('-')[2])
-    width=int(arr.shape[0])
-    height=int(arr.shape[1])
+    width = int(arr.shape[0])
+    height =int(arr.shape[1])
 
-    return name, x, y, z,width,height
+    return name, x, y, z, width, height
 
 
 # prep image for vectorization
 
-def get_array(img):
+def get_array(src):
+    """
+     Check if source data is array or image
 
-    if isinstance(img, np.ndarray) is not True:
-        arr = img.read(1)
+    :param src: source data
+    :return: array
+    """
+
+    if isinstance(src, np.ndarray) is not True:
+        arr = src.read(1)
     else:
-        arr = img
+        arr = src
 
     return arr
 
 
-def skeltonize_image(img):
+def skeletonize_line(img):
 
     arr = get_array(img)
     # set 5 by 5 convolve 
@@ -125,19 +136,20 @@ def skeltonize_image(img):
                  ball_5)[9:-9,9:-9]
     
     # skeletonize
-    skltn = skeletonize(binary_closure)
+    skeleton = skeletonize(binary_closure)
     
-    return skltn
+    return skeleton
 
 
 def convert_poly_coords(geom, affine_obj):
-    '''
-     assigns affine transformation to geometry
+
+    """
+     Assigns affine transformation to geometry
 
     :param geom: shapely geometry input data
     :param affine_obj: affine transformation value
     :return: geometry with correct transformation
-    '''
+    """
 
     affine_xform = affine_obj
     g = geom
@@ -158,12 +170,14 @@ crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
 def assign_transform(img, geom):
 
-    '''
-     assigns input image affine transformation to geometry
+    """
+    assigns input image affine transformation to geometry
+
     :param img: input data sourcing the affine values
     :param geom: shapely geometry to assign the assign
     :return: geometry with correct transformation
-    '''
+
+    """
 
     src = rasterio.open(img)
     affine_xform = src.transform
@@ -188,15 +202,14 @@ shp_schema = {'geometry': 'MultiLineString',
 
 
 def export_to_shp(geom, opt_file_name):
-    '''
-      Saves shapely geometry to shapefile
+    """
+      Saves shapely geometry to ESRI's shape-file
 
     :param geom: input shapely vector geometry
     :param opt_file_name: output file name
-    :return: shapefile output
-    '''
+    :return: shape-file output
+    """
 
-    # save
     with fiona.open(opt_file_name+'.shp', 
                     'w', 
                     'ESRI Shapefile', crs=crs,
@@ -211,15 +224,14 @@ def export_to_shp(geom, opt_file_name):
 
 
 def export_to_geojson(geom, opt_file_name):
-    '''
+    """
+
      Saves shapely geometry to geojson
 
     :param geom: shapely geometry
     :param opt_file_name: geojson output file name
     :return: geojson
-    '''
-
-    # mp, aff_tr = convert_poly_coords(geom)
+    """
     
     with fiona.open(opt_file_name+'.geojson', 
                     'w',
@@ -234,14 +246,28 @@ def export_to_geojson(geom, opt_file_name):
             output.write(feature)
 
 
-def main(input_vrt, output_file_name):
+def extract_vector(input_vrt, output_name, save_output=True, save_as='shapefile'):
 
     src = rasterio.open(input_vrt)
     arr = get_array(src)
-    skeleton = skeltonize_image(arr)
-    vector = vectorize(skeleton)
+    skeleton = skeletonize_line(arr)
+    vector_file = vector(skeleton)
     geo_transform = src.transform
-    polygon = convert_poly_coords(vector, geo_transform)
-    export_to_geojson(polygon,output_file_name)
+    polygon = convert_poly_coords(vector_file, geo_transform)
 
-    print('Task is completed')
+    if save_output is True:
+
+        if save_as == 'shapefile':
+            export_to_shp(polygon, output_name)
+
+        elif save_as == 'geojson':
+            export_to_geojson(polygon, output_name)
+
+        else:
+            raise Exception('output file format must be either a shape file or geojson')
+
+    else:
+        return polygon
+
+
+
