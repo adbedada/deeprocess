@@ -115,9 +115,9 @@ def skeltonize_image(img):
 
     arr = get_array(img)
     # set 5 by 5 convolve 
-    ball_5 = np.ones((15,15), dtype=int)
-    ball_5[0,[0,-1]] = 0
-    ball_5[-1,[0,-1]] = 0
+    ball_5 = np.ones((5,5), dtype=int)
+    ball_5[0, [0, -1]] = 0
+    ball_5[-1, [0, -1]] = 0
     
     # close gaps at segments
     binary_closure = ndimage.binary_closing \
@@ -157,6 +157,7 @@ crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
 
 def assign_transform(img, geom):
+
     '''
      assigns input image affine transformation to geometry
     :param img: input data sourcing the affine values
@@ -188,36 +189,49 @@ shp_schema = {'geometry': 'MultiLineString',
 
 def export_to_shp(geom, opt_file_name):
     '''
-      saves shapely geometry to shapefile
+      Saves shapely geometry to shapefile
 
     :param geom: input shapely vector geometry
     :param opt_file_name: output file name
     :return: shapefile output
     '''
 
-
     # save
     with fiona.open(opt_file_name+'.shp', 
                     'w', 
                     'ESRI Shapefile', crs=crs,
                     schema=shp_schema)  as output:
-            output.write({'geometry':mapping(geom),'properties': {'id':1}})
 
-            
+        for g in enumerate(geom):
+            feature = {}
+            feature['geometry'] = mapping(g[1])
+            feature['properties'] = {'id':g[0]}
+
+            output.write(feature)
+
+
 def export_to_geojson(geom, opt_file_name):
     '''
-     saves shapely geometry to geojson
+     Saves shapely geometry to geojson
+
     :param geom: shapely geometry
     :param opt_file_name: geojson output file name
     :return: geojson
     '''
-    mp, aff_tr = convert_poly_coords(geom)
+
+    # mp, aff_tr = convert_poly_coords(geom)
     
     with fiona.open(opt_file_name+'.geojson', 
                     'w',
                     'GeoJSON', crs=crs,
                     schema=shp_schema)  as output:
-            output.write(   {'geometry':mapping(mp),'properties': {'id':1}})
+
+        for g in enumerate(geom):
+            feature = {}
+            feature['geometry'] = mapping(g[1])
+            feature['properties'] = {'id': g[0]}
+
+            output.write(feature)
 
 
 def main(input_vrt, output_file_name):
@@ -228,9 +242,6 @@ def main(input_vrt, output_file_name):
     vector = vectorize(skeleton)
     geo_transform = src.transform
     polygon = convert_poly_coords(vector, geo_transform)
-    export_to_shp(polygon,output_file_name)
+    export_to_geojson(polygon,output_file_name)
 
     print('Task is completed')
-
-main('/Users/eddiebedada/tests/vectorize/ff_vrt/mosaic.vrt',
-     '/Users/eddiebedada/tests/vectorize/ff_vrt/6_mosaic')
